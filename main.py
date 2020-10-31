@@ -5,8 +5,9 @@ from PyQt5.QtWidgets import QLabel, QGridLayout, QSpacerItem
 from PyQt5.QtWidgets import QLineEdit, QPushButton, QHBoxLayout, QVBoxLayout, QGridLayout, QGraphicsView, \
     QGraphicsScene, QSizePolicy
 from PyQt5.QtWidgets import QMessageBox
-from PyQt5.QtCore import Qt
+from PyQt5.QtCore import Qt, QRect
 from PyQt5.QtGui import QPainter, QColor, QFont
+from PyQt5 import QtCore
 from Parametry import Parametr, modelComboBox
 import math
 import matplotlib.pyplot as plt
@@ -17,7 +18,7 @@ import pyqtgraph as pg
 class main_window(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setGeometry(450, 200, 1000, 600)
+        self.setGeometry(450, 200, 1100, 550)
         self.setWindowTitle("NRange")
         self.scene = QGraphicsScene()
         self.view = QGraphicsView(self.scene)
@@ -28,7 +29,6 @@ class main_window(QWidget):
         layout = QHBoxLayout()
         ### INPUTY PARAMETROW
         fieldsLayout = QGridLayout()  # layout dla prawej części
-        rightHlayout = QVBoxLayout()
         itemsLayout = QVBoxLayout()  # g lowny layout
 
         self.Ptx = Parametr("Ptx", 0, 99, 0)
@@ -36,7 +36,7 @@ class main_window(QWidget):
         self.Ftx = Parametr("Ftx", 0, 99, 0)
         self.Grx = Parametr("Grx", 0, 99, 0)
         self.Frx = Parametr("Frx", 0, 99, 0)
-        self.SNR = Parametr("SNR", 0, 99, 0)
+        self.SNR = Parametr("SNR", -20, 99, 0)
         self.bandwitch = Parametr("B [MHz]", 0, 99, 0)
         self.Fnoise = Parametr("Fnoise", 0, 99, 0)
         self.Temp = Parametr("Temp [K]", 0, 999, 0)
@@ -70,6 +70,8 @@ class main_window(QWidget):
         # lewa strona
         # layout.addWidget(paintContainer)
         verticalSpacer = QSpacerItem(1, 50, QSizePolicy.Fixed, QSizePolicy.Expanding)
+        rect = QRect(0,0,100,600)
+        fieldsLayout.setAlignment(Qt.AlignRight)
         fieldsLayout.addItem(verticalSpacer, 5, 0)
         fieldsLayout.setRowStretch(0, 1)
         fieldsLayout.setRowStretch(1, 1)
@@ -79,6 +81,7 @@ class main_window(QWidget):
         layout.addItem(itemsLayout)  # główny layout dzieli obszar na dwie czesci
         # self.Ptx = self.Ptx.container.text()
         # self.scene.addText(self.Ptx.container.text())
+        layout.setStretchFactor(self.view, 2)
         self.setLayout(layout)
 
     def propagationModel(self, name='ddd'):
@@ -94,45 +97,54 @@ class main_window(QWidget):
         Fnoise = self.Fnoise.returnParameterValues()
         Freq = self.Freq.returnParameterValues()
         k = 1.38e-23
+
+        # Częstoty do rysowania
+        Ftab = [x for x in range(100, 100000, 100)]
+        FdBtab = [20 * math.log10(x) for x in Ftab]
+        # SNR USTAWIONE
         Lmax = Ptx + Gtx - Ftx + Grx - Frx - SNR - k * bandwitch * (10 ** 6) * Temp - Fnoise - 2
+        # Lmax dla QPSK
+        LmaxQPSK = Ptx + Gtx - Ftx + Grx - Frx - calcLossForMod('QPSK') - k * bandwitch * (10 ** 6) * Temp - Fnoise - 2
+        # Lmax dla 16QAM
+        Lmax16QAM = Ptx + Gtx - Ftx + Grx - Frx - calcLossForMod('16QAM') - k * bandwitch * (10 ** 6) * Temp - Fnoise - 2
+        # Lmax dla 64QAM
+        Lmax64QAM = Ptx + Gtx - Ftx + Grx - Frx - calcLossForMod('64QAM') - k * bandwitch * (10 ** 6) * Temp - Fnoise - 2
+
+        # WPP
         # L = 32,4 +20lg f [MHz] + 20lg d [km]
         # 20lg d = L - 32,4 - 20lg f
         # d = 10^(x/20)
-        Ftab = [x for x in range(100, 100000, 100)]
-        FdBtab = [20 * math.log10(x) for x in Ftab]
-        print(FdBtab)
-        print(Lmax)
-        xTab = [(Lmax - 32.4 - x) for x in FdBtab]
-        print(xTab)
-        Dtab = [(10 ** (x/20)) * 1000 for x in xTab]
-        print(Dtab)
-        #Ftab = [1,2,3,4,5]
-        #Dtab = [8,9,10,11,12]
+
+        # obliczanie X
+        xTabSet = [(Lmax - 32.4 - x) for x in FdBtab]
+        xTabQPSK = [(LmaxQPSK - 32.4 - x) for x in FdBtab]
+        xTab16QAM = [(Lmax16QAM - 32.4 - x) for x in FdBtab]
+        xTab64QAM = [(Lmax64QAM - 32.4 - x) for x in FdBtab]
+
+        # obliczanie odleglości
+        Dtab = [(10 ** (x/20)) * 1000 for x in xTabSet]
+        DtabQPSK = [(10 ** (x/20)) * 1000 for x in xTabQPSK]
+        Dtab16QAM = [(10 ** (x/20)) * 1000 for x in xTab16QAM]
+        Dtab64QAM = [(10 ** (x/20)) * 1000 for x in xTab64QAM]
+
         self.graphWidget = pg.PlotWidget()
         self.graphWidget.setBackground('w')
-        #self.graphWidget.setXRange(10000,1000)
-        #self.graphWidget.setYRange(10000,1000)
+        self.graphWidget.addLegend(offset=(480,10))
+
+        # self.graphWidget.setXRange(1,10000)
+        # self.graphWidget.setYRange(1,10000)
         self.scene.addWidget(self.graphWidget)
-        pen = pg.mkPen(color=(0,0,0))
-        self.graphWidget.plot(Ftab, Dtab, pen=pen)
+        xLabelFreqdB = [10 * math.log10(x) for x in Ftab]
+        self.plot(xLabelFreqdB, Dtab, 'Własne SNR', 'k')
+        self.plot(xLabelFreqdB, DtabQPSK, 'QPSK', 'r')
+        self.plot(xLabelFreqdB, Dtab16QAM, '16QAM', 'g')
+        self.plot(xLabelFreqdB, Dtab64QAM, '64QAM', 'b')
         self.graphWidget.setTitle("Zasięg użyteczny [m] w funkcji częstotliwości [MHz]", color='k', size='10pt')
         styles = {'color': 'k', 'font-size': '15px'}
         self.graphWidget.setLabel('left', 'Odległość [m]', **styles)
-        self.graphWidget.setLabel('bottom', 'Częstotliwość [MHz]', **styles)
-        # Freq = 1
-        # x = 1
-        # while x < 10:
-        #     freq = 600
-        #     fdB = 20 * math.log10(Freq)
-        #     x = Lmax - 32.4 - fdB
-        #     d = 10 ** (x / 20)
-        #     Dtab.append(d)
-        #     Ftab.append(freq)
-        #     freq = freq * x
-        #     x = x + 1
-        #
-        # plt.plot(Ftab, Dtab)
-        ### obliczanie zasiegu
+        self.graphWidget.setLabel('bottom', 'Częstotliwość 10log(f[MHz] / 1 [MHz]', **styles)
+
+        # obliczanie zasiegu
         # fdB = 20 * math.log10(Freq)
         # x = Lmax - 32.4 - fdB
         # d = 10**(x/20)
@@ -143,6 +155,23 @@ class main_window(QWidget):
         # L = 32,4 +20lg f [MHz] + 20lg d [km]
         # 20lg d = L - 32,4 - 20lg f
         # d = 10^(x/20)
+
+    def plot(self, x, y, plotname, color):
+        pen = pg.mkPen(color=color)
+        self.graphWidget.plot(x, y, name=plotname, pen=pen)
+
+
+def calcLossForMod(mod):
+    SNR = 0
+    if mod == 'QPSK':   # CQI 1,2,3,4,5,6
+        SNR = -8
+    elif mod == '16QAM': # CQI 7,8,9
+        SNR = 6
+    elif mod == "64QAM":    # CQI 10,11,12,13,14,15
+        SNR = 15
+    else:
+        SNR = -20
+    return SNR
 
 
 if __name__ == '__main__':
