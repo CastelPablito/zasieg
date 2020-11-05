@@ -31,17 +31,18 @@ class Parametr(QVBoxLayout):
         self.slider.valueChanged.connect(lambda x: self.container.setText(str(x)))
         #self.container.textChanged.connect(lambda x: main_window.propagationModel())
 
-
     def returnParameterValues(self):
+        x = self.container.text()
+        try:
+            a = int(x)
+        except:
+            print('d')
         return int(self.container.text())
-
-
 
 
 class myLineEdit(QLineEdit):
     def __init__(self, parent = None):
         super().__init__(parent)
-
 
 
 class modelComboBox(QVBoxLayout):
@@ -50,10 +51,10 @@ class modelComboBox(QVBoxLayout):
         label = QLabel(info)
         label.setMaximumHeight(15)
         self.addWidget(label)
-        wybor = QComboBox()
-        modele = ["WPP", "uMi", "uMa"]
-        wybor.addItems(modele)
-        self.addWidget(wybor)
+        self.wybor = QComboBox()
+        modele = ["ABG SC", "ABG OS", "CI SC", "CI OS", "WINNER II LOS"]
+        self.wybor.addItems(modele)
+        self.addWidget(self.wybor)
         self.setSpacing(10)
 
 
