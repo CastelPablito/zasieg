@@ -8,12 +8,14 @@ from PyQt5.QtWidgets import QMessageBox
 from PyQt5.QtCore import Qt, QRect
 from PyQt5.QtGui import QPainter, QColor, QFont
 from PyQt5 import QtCore
-from Parametry import Parametr, modelComboBox
+from Parametry import Parametr, modelComboBox, CQI
 import math
 import matplotlib.pyplot as plt
 from pyqtgraph import PlotWidget, plot
 import pyqtgraph as pg
-
+from decimal import Decimal
+from scipy.stats import lognorm
+import random
 
 MAX_FREQ = 6000
 MIN_FREQ = 2000
@@ -35,20 +37,22 @@ class main_window(QWidget):
         fieldsLayout = QGridLayout()  # layout dla prawej części
         itemsLayout = QVBoxLayout()  # g lowny layout
 
-        self.Ptx = Parametr("Ptx", 0, 99, 0)
-        self.Gtx = Parametr("Gtx", 0, 99, 0)
-        self.Ftx = Parametr("Ftx", 0, 99, 0)
-        self.Grx = Parametr("Grx", 0, 99, 0)
-        self.Frx = Parametr("Frx", 0, 99, 0)
-        self.SNR = Parametr("SNR", -20, 99, 0)
-        self.bandwitch = Parametr("B [MHz]", 0, 99, 0)
-        self.Fnoise = Parametr("Fnoise", 0, 99, 0)
-        self.Temp = Parametr("Temp [K]", 0, 999, 0)
+        self.Ptx = Parametr("Ptx", 0, 99, 10)
+        self.Gtx = Parametr("Gtx", 0, 99, 14)
+        self.Ftx = Parametr("Ftx", 0, 99, 2)
+        self.Grx = Parametr("Grx", 0, 99, 3)
+        self.Frx = Parametr("Frx", 0, 99, 1)
+        self.SNR = Parametr("SNR", -20, 99, 5)
+        self.bandwitch = Parametr("B [MHz]", 1, 200, 20)
+        self.Fnoise = Parametr("Fnoise", 0, 99, 5)
+        self.Temp = Parametr("Temp [K]", 1, 999, 293)
         self.Freq = Parametr("Freq [MHz]", MIN_FREQ, MAX_FREQ, MIN_FREQ)
         self.wyborModelu = modelComboBox("Model propagacyjny")
+        self.wyborOsiX = modelComboBox("Oś x")
         self.wynikLabel = QLabel()
 
         fieldsLayout.addItem(self.wyborModelu, 0, 0)
+        fieldsLayout.addItem(self.wyborOsiX, 0, 2)
         fieldsLayout.addItem(self.Ptx, 1, 0)
         fieldsLayout.addItem(self.Gtx, 1, 1)
         fieldsLayout.addItem(self.Ftx, 1, 2)
@@ -103,68 +107,10 @@ class main_window(QWidget):
         Freq = self.Freq.returnParameterValues()
         k = 1.38e-23
 
-        # Częstoty do rysowania
-        Ftab = [x for x in range(MIN_FREQ, MAX_FREQ, 100)]
-        FdBtab = [20 * math.log10(x) for x in Ftab]
-        # SNR USTAWIONE
-        Lmax = Ptx + Gtx - Ftx + Grx - Frx - SNR - k * bandwitch * (10 ** 6) * Temp - Fnoise - 2
-        # Lmax dla QPSK
-        LmaxQPSK = Ptx + Gtx - Ftx + Grx - Frx - calcLossForMod('QPSK') - k * bandwitch * (10 ** 6) * Temp - Fnoise - 2
-        # Lmax dla 16QAM
-        Lmax16QAM = Ptx + Gtx - Ftx + Grx - Frx - calcLossForMod('16QAM') - k * bandwitch * (10 ** 6) * Temp - Fnoise - 2
-        # Lmax dla 64QAM
-        Lmax64QAM = Ptx + Gtx - Ftx + Grx - Frx - calcLossForMod('64QAM') - k * bandwitch * (10 ** 6) * Temp - Fnoise - 2
-
-        # WPP
-        # L = 32,4 +20lg f [MHz] + 20lg d [km]
-        # 20lg d = L - 32,4 - 20lg f
-        # d = 10^(x/20)
-        if self.wyborModelu.wybor.currentText() == 'WPP':
-            Dtab, DtabQPSK, Dtab16QAM, Dtab64QAM = self.WPPmodel(Lmax, LmaxQPSK, Lmax16QAM, Lmax64QAM, FdBtab)
-        elif self.wyborModelu.wybor.currentText() == 'ABG SC':
-            Dtab, DtabQPSK, Dtab16QAM, Dtab64QAM = self.ABGmodel(Lmax, LmaxQPSK, Lmax16QAM, Lmax64QAM, Ftab, 'SC')
-        elif self.wyborModelu.wybor.currentText() == 'ABG OS':
-            Dtab, DtabQPSK, Dtab16QAM, Dtab64QAM = self.ABGmodel(Lmax, LmaxQPSK, Lmax16QAM, Lmax64QAM, Ftab, 'OS')
-        elif self.wyborModelu.wybor.currentText() == 'CI SC':
-            Dtab, DtabQPSK, Dtab16QAM, Dtab64QAM = self.CImodel(Lmax, LmaxQPSK, Lmax16QAM, Lmax64QAM, Ftab, 'SC')
-        elif self.wyborModelu.wybor.currentText() == 'CI OS':
-            Dtab, DtabQPSK, Dtab16QAM, Dtab64QAM = self.CImodel(Lmax, LmaxQPSK, Lmax16QAM, Lmax64QAM, Ftab, 'OS')
-        elif self.wyborModelu.wybor.currentText() == 'WINNER II LOS':
-            Dtab, DtabQPSK, Dtab16QAM, Dtab64QAM= self.WINNERIIB1model(Ftab, Lmax, LmaxQPSK, Lmax16QAM, Lmax64QAM)
-        else:
-            self.scene.clear()
-
-        self.graphWidget = pg.PlotWidget()
-        self.graphWidget.setBackground('w')
-        self.graphWidget.addLegend(offset=(480, 10))
-
-        # self.graphWidget.setXRange(1,10000)
-        # self.graphWidget.setYRange(1,10000)
-        self.scene.addWidget(self.graphWidget)
-        #xLabelFreqdB = [10 * math.log10(x) for x in Ftab]
-        xLabelFreqdB = Ftab
-        self.plot(xLabelFreqdB, Dtab, 'Własne SNR', 'k')
-        self.plot(xLabelFreqdB, DtabQPSK, 'QPSK', 'r')
-        self.plot(xLabelFreqdB, Dtab16QAM, '16QAM', 'g')
-        self.plot(xLabelFreqdB, Dtab64QAM, '64QAM', 'b')
-        self.graphWidget.setTitle("Zasięg użyteczny [m] w funkcji częstotliwości [MHz]", color='k', size='10pt')
-        styles = {'color': 'k', 'font-size': '15px'}
-        self.graphWidget.setLabel('left', 'Odległość [m]', **styles)
-        self.graphWidget.setLabel('bottom', 'Częstotliwość f[MHz]', **styles)
-
-        # obliczanie zasiegu
-        if self.wyborModelu.wybor.currentText() == 'WPP':
-            self.calcRange(Freq, "WPP", Lmax)
-        elif self.wyborModelu.wybor.currentText() == 'ABG SC':
-            self.calcRange(Freq, "ABG SC", Lmax)
-        elif self.wyborModelu.wybor.currentText() == 'ABG OS':
-            self.calcRange(Freq, "ABG OS", Lmax)
-        elif self.wyborModelu.wybor.currentText() == 'CI SC':
-            self.calcRange(Freq, "CI SC", Lmax)
-        elif self.wyborModelu.wybor.currentText() == 'CI OS':
-            self.calcRange(Freq, "CI OS", Lmax)
-        elif self.wyborModelu.wybor.currentText() == 'WINNER II LOS':
-            self.calcRange(Freq, "WINNER II LOS", Lmax)
+        if self.wyborOsiX.wybor.currentText() == 'f [MHz]':
+            self.freqChoosen(Ptx, Gtx, Ftx, Grx, Frx, SNR, bandwitch, Temp, Fnoise, Freq, k)
+        elif self.wyborOsiX.wybor.currentText() == 'CQI':
+            self.CQIchoosen(Ptx, Gtx, Ftx, Grx, Frx, SNR, bandwitch, Temp, Fnoise, Freq, k)
 
         # self.scene.clear()
         # self.scene.addText(str(round(d*1000, 2)))  # odleglosc w metrach
@@ -191,7 +137,7 @@ class main_window(QWidget):
 
         return Dtab, DtabQPSK, Dtab16QAM, Dtab64QAM
 
-    def ABGmodel(self, Lmax, LmaxQPSK, Lmax16QAM, Lmax64QAM, FdBtab, type):
+    def ABGmodel(self, Lmax=0, LmaxQPSK=0, Lmax16QAM=0, Lmax64QAM=0, FdBtab=list(), type='', cqi=False, freq=0):
         # obliczanie X
         alfa = 2
         beta = 31.4
@@ -209,19 +155,24 @@ class main_window(QWidget):
             gamma = 1.9
             idk = 0
 
-        xTabSet = [(Lmax - beta - 10 * gamma * math.log10(x / 1000) - idk) for x in FdBtab]
-        xTabQPSK = [(LmaxQPSK - beta - 10 * gamma * math.log10(x / 1000) - idk) for x in FdBtab]
-        xTab16QAM = [(Lmax16QAM - beta - 10 * gamma * math.log10(x / 1000) - idk) for x in FdBtab]
-        xTab64QAM = [(Lmax64QAM - beta - 10 * gamma * math.log10(x / 1000) - idk) for x in FdBtab]
+        if cqi == False:
+            xTabSet = [(Lmax - beta - 10 * gamma * math.log10(x / 1000) - idk) for x in FdBtab]
+            xTabQPSK = [(LmaxQPSK - beta - 10 * gamma * math.log10(x / 1000) - idk) for x in FdBtab]
+            xTab16QAM = [(Lmax16QAM - beta - 10 * gamma * math.log10(x / 1000) - idk) for x in FdBtab]
+            xTab64QAM = [(Lmax64QAM - beta - 10 * gamma * math.log10(x / 1000) - idk) for x in FdBtab]
 
-        # obliczanie odleglości
-        Dtab = [(10 ** (x / (10 * alfa))) for x in xTabSet]
-        DtabQPSK = [(10 ** (x / (10 * alfa))) for x in xTabQPSK]
-        Dtab16QAM = [(10 ** (x / (10 * alfa))) for x in xTab16QAM]
-        Dtab64QAM = [(10 ** (x / (10 * alfa))) for x in xTab64QAM]
-        return Dtab, DtabQPSK, Dtab16QAM, Dtab64QAM
+            # obliczanie odleglości
+            Dtab = [(10 ** (x / (10 * alfa))) for x in xTabSet]
+            DtabQPSK = [(10 ** (x / (10 * alfa))) for x in xTabQPSK]
+            Dtab16QAM = [(10 ** (x / (10 * alfa))) for x in xTab16QAM]
+            Dtab64QAM = [(10 ** (x / (10 * alfa))) for x in xTab64QAM]
+            return Dtab, DtabQPSK, Dtab16QAM, Dtab64QAM
+        else:
+            x = Lmax - beta - 10 * gamma * math.log10(freq / 1000) - idk
+            d = 10 ** (x / (10 * alfa))
+            return d
 
-    def CImodel(self, Lmax, LmaxQPSK, Lmax16QAM, Lmax64QAM, FdBtab, type):
+    def CImodel(self, Lmax=0, LmaxQPSK=0, Lmax16QAM=0, Lmax64QAM=0, FdBtab=list(), type='', cqi=False, freq=0):
         # obliczanie X
         n = 1
         idk = 0
@@ -230,17 +181,22 @@ class main_window(QWidget):
         elif type == 'OS':
             n = 2.8
 
-        xTabSet = [(Lmax - 20 * math.log10(4 * math.pi * x * 10 ** 6 / (3 * 10 ** 8)) - idk) for x in FdBtab]
-        xTabQPSK = [(LmaxQPSK - 20 * math.log10(4 * math.pi * x * 10 ** 6 / (3 * 10 ** 8)) - idk) for x in FdBtab]
-        xTab16QAM = [(Lmax16QAM - 20 * math.log10(4 * math.pi * x * 10 ** 6 / (3 * 10 ** 8)) - idk) for x in FdBtab]
-        xTab64QAM = [(Lmax64QAM - 20 * math.log10(4 * math.pi * x * 10 ** 6 / (3 * 10 ** 8)) - idk) for x in FdBtab]
+        if cqi == False:
+            xTabSet = [(Lmax - 20 * math.log10(4 * math.pi * x * 10 ** 6 / (3 * 10 ** 8)) - idk) for x in FdBtab]
+            xTabQPSK = [(LmaxQPSK - 20 * math.log10(4 * math.pi * x * 10 ** 6 / (3 * 10 ** 8)) - idk) for x in FdBtab]
+            xTab16QAM = [(Lmax16QAM - 20 * math.log10(4 * math.pi * x * 10 ** 6 / (3 * 10 ** 8)) - idk) for x in FdBtab]
+            xTab64QAM = [(Lmax64QAM - 20 * math.log10(4 * math.pi * x * 10 ** 6 / (3 * 10 ** 8)) - idk) for x in FdBtab]
 
-        # obliczanie odleglości
-        Dtab = [(10 ** (x / (10 * n))) for x in xTabSet]
-        DtabQPSK = [(10 ** (x / (10 * n))) for x in xTabQPSK]
-        Dtab16QAM = [(10 ** (x / (10 * n))) for x in xTab16QAM]
-        Dtab64QAM = [(10 ** (x / (10 * n))) for x in xTab64QAM]
-        return Dtab, DtabQPSK, Dtab16QAM, Dtab64QAM
+            # obliczanie odleglości
+            Dtab = [(10 ** (x / (10 * n))) for x in xTabSet]
+            DtabQPSK = [(10 ** (x / (10 * n))) for x in xTabQPSK]
+            Dtab16QAM = [(10 ** (x / (10 * n))) for x in xTab16QAM]
+            Dtab64QAM = [(10 ** (x / (10 * n))) for x in xTab64QAM]
+            return Dtab, DtabQPSK, Dtab16QAM, Dtab64QAM
+        else:
+            x = Lmax - 20 * math.log10(4 * math.pi * freq * 10 ** 6 / (3 * 10 ** 8)) - idk
+            d = 10 ** (x / (10 * n))
+            return d
 
     def WINNERIIB1model(self, Ftab, Lmax, LmaxQPSK, Lmax16QAM, Lmax64QAM):
         # LOS
@@ -334,6 +290,168 @@ class main_window(QWidget):
             else:
                 d = 10**((Lmax - 9.45 + 17.3 * math.log10(hbs + hms) - 2.7 * math.log10(Freq/5000))/40)
             self.wynikLabel.setText("d(f): " + str(round(d, 2)) + "m")
+
+    def freqChoosen(self,Ptx, Gtx, Ftx, Grx, Frx, SNR, bandwitch, Temp, Fnoise, Freq, k):
+        # Częstoty do rysowania
+        Ftab = [x for x in range(MIN_FREQ, MAX_FREQ, 100)]
+        FdBtab = [20 * math.log10(x) for x in Ftab]
+        N = 10 * math.log10((k * bandwitch * (10 ** 6) * Temp) * 1000)
+        # SNR USTAWIONE
+        Lmax = Ptx + Gtx - Ftx + Grx - Frx - SNR - N - Fnoise - 2
+        # Lmax dla QPSK
+        LmaxQPSK = Ptx + Gtx - Ftx + Grx - Frx - calcLossForMod('QPSK') - N - Fnoise - 2
+        # Lmax dla 16QAM
+        Lmax16QAM = Ptx + Gtx - Ftx + Grx - Frx - calcLossForMod('16QAM') - N - Fnoise - 2
+        # Lmax dla 64QAM
+        Lmax64QAM = Ptx + Gtx - Ftx + Grx - Frx - calcLossForMod('64QAM') - N - Fnoise - 2
+
+        # WPP
+        # L = 32,4 +20lg f [MHz] + 20lg d [km]
+        # 20lg d = L - 32,4 - 20lg f
+        # d = 10^(x/20)
+        Dtab, DtabQPSK, Dtab16QAM, Dtab64QAM = 0, 0, 0, 0
+
+        if self.wyborModelu.wybor.currentText() == 'ABG SC':
+            Dtab, DtabQPSK, Dtab16QAM, Dtab64QAM = self.ABGmodel(Lmax, LmaxQPSK, Lmax16QAM, Lmax64QAM, Ftab, 'SC')
+        elif self.wyborModelu.wybor.currentText() == 'ABG OS':
+            Dtab, DtabQPSK, Dtab16QAM, Dtab64QAM = self.ABGmodel(Lmax, LmaxQPSK, Lmax16QAM, Lmax64QAM, Ftab, 'OS')
+        elif self.wyborModelu.wybor.currentText() == 'CI SC':
+            Dtab, DtabQPSK, Dtab16QAM, Dtab64QAM = self.CImodel(Lmax, LmaxQPSK, Lmax16QAM, Lmax64QAM, Ftab, 'SC')
+        elif self.wyborModelu.wybor.currentText() == 'CI OS':
+            Dtab, DtabQPSK, Dtab16QAM, Dtab64QAM = self.CImodel(Lmax, LmaxQPSK, Lmax16QAM, Lmax64QAM, Ftab, 'OS')
+        elif self.wyborModelu.wybor.currentText() == 'WINNER II LOS':
+            Dtab, DtabQPSK, Dtab16QAM, Dtab64QAM = self.WINNERIIB1model(Ftab, Lmax, LmaxQPSK, Lmax16QAM, Lmax64QAM)
+        else:
+            self.scene.clear()
+
+        self.graphWidget = pg.PlotWidget()
+        self.graphWidget.setBackground('w')
+        self.graphWidget.addLegend(offset=(480, 10))
+
+        # self.graphWidget.setXRange(1,10000)
+        # self.graphWidget.setYRange(1,10000)
+        self.scene.addWidget(self.graphWidget)
+        # xLabelFreqdB = [10 * math.log10(x) for x in Ftab]
+        xLabelFreqdB = Ftab
+        self.plot(xLabelFreqdB, Dtab, 'Własne SNR', 'k')
+        self.plot(xLabelFreqdB, DtabQPSK, 'QPSK', 'r')
+        self.plot(xLabelFreqdB, Dtab16QAM, '16QAM', 'g')
+        self.plot(xLabelFreqdB, Dtab64QAM, '64QAM', 'b')
+        self.graphWidget.setTitle("Zasięg użyteczny [m] w funkcji częstotliwości [MHz]", color='k', size='10pt')
+        styles = {'color': 'k', 'font-size': '15px'}
+        self.graphWidget.setLabel('left', 'Odległość [m]', **styles)
+        self.graphWidget.setLabel('bottom', 'Częstotliwość f[MHz]', **styles)
+
+        # obliczanie zasiegu
+        if self.wyborModelu.wybor.currentText() == 'WPP':
+            self.calcRange(Freq, "WPP", Lmax)
+        elif self.wyborModelu.wybor.currentText() == 'ABG SC':
+            self.calcRange(Freq, "ABG SC", Lmax)
+        elif self.wyborModelu.wybor.currentText() == 'ABG OS':
+            self.calcRange(Freq, "ABG OS", Lmax)
+        elif self.wyborModelu.wybor.currentText() == 'CI SC':
+            self.calcRange(Freq, "CI SC", Lmax)
+        elif self.wyborModelu.wybor.currentText() == 'CI OS':
+            self.calcRange(Freq, "CI OS", Lmax)
+        elif self.wyborModelu.wybor.currentText() == 'WINNER II LOS':
+            self.calcRange(Freq, "WINNER II LOS", Lmax)
+
+    def CQIchoosen(self,Ptx, Gtx, Ftx, Grx, Frx, SNR, bandwitch, Temp, Fnoise, Freq, k):
+        CQItab = [-7.8474, -6.2369, -4.3591, -1.9319, 0.1509, 1.9976, 4.7278, 6.2231, 8.0591, 9.8585, 11.8432, 13.4893, 15.3598, 17.4435,
+                  19.2155]
+        CQIindex = [x for x in range(1, 16)]
+        N = 10 * math.log10((k * bandwitch * (10 ** 6) * Temp) * 1000)
+        # SNR USTAWIONE
+        Ltab = [Ptx + Gtx - Ftx + Grx - Frx - value - N - Fnoise - 2 for value in CQItab]
+
+        Dtab = []
+        for L in Ltab:
+            D = 0
+            if self.wyborModelu.wybor.currentText() == 'ABG SC':
+                D = self.ABGmodel(L, type='SC', cqi=True, freq=Freq)
+            elif self.wyborModelu.wybor.currentText() == 'ABG OS':
+                D = self.ABGmodel(L, type='OS', cqi=True, freq=Freq)
+            elif self.wyborModelu.wybor.currentText() == 'CI SC':
+                D = self.CImodel(L, type='SC', cqi=True, freq=Freq)
+            elif self.wyborModelu.wybor.currentText() == 'CI OS':
+                D = self.CImodel(L, type='OS', cqi=True, freq=Freq)
+            Dtab.append(D)
+
+        self.graphWidget = pg.PlotWidget()
+        self.graphWidget.setBackground('w')
+        self.graphWidget.addLegend(offset=(480, 10))
+        self.scene.addWidget(self.graphWidget)
+        xLabel = CQIindex
+        self.plot(xLabel, Dtab, 'd(CQI)', 'k')
+        self.graphWidget.setTitle("Zasięg użyteczny [m] w funkcji CQI [SNR [dB]]", color='k', size='10pt')
+        styles = {'color': 'k', 'font-size': '15px'}
+        self.graphWidget.setLabel('left', 'Odległość [m]', **styles)
+        self.graphWidget.setLabel('bottom', 'CQI', **styles)
+
+    def powerChoosen(self,Ptx, Gtx, Ftx, Grx, Frx, SNR, bandwitch, Temp, Fnoise, Freq, k):
+        # Częstoty do rysowania
+        Ftab = [x for x in range(MIN_FREQ, MAX_FREQ, 100)]
+        FdBtab = [20 * math.log10(x) for x in Ftab]
+        N = 10 * math.log10((k * bandwitch * (10 ** 6) * Temp) * 1000)
+        # SNR USTAWIONE
+        Lmax = Ptx + Gtx - Ftx + Grx - Frx - SNR - N - Fnoise - 2
+        # Lmax dla QPSK
+        LmaxQPSK = Ptx + Gtx - Ftx + Grx - Frx - calcLossForMod('QPSK') - N - Fnoise - 2
+        # Lmax dla 16QAM
+        Lmax16QAM = Ptx + Gtx - Ftx + Grx - Frx - calcLossForMod('16QAM') - N - Fnoise - 2
+        # Lmax dla 64QAM
+        Lmax64QAM = Ptx + Gtx - Ftx + Grx - Frx - calcLossForMod('64QAM') - N - Fnoise - 2
+
+        # WPP
+        # L = 32,4 +20lg f [MHz] + 20lg d [km]
+        # 20lg d = L - 32,4 - 20lg f
+        # d = 10^(x/20)
+        Dtab, DtabQPSK, Dtab16QAM, Dtab64QAM = 0, 0, 0, 0
+
+        if self.wyborModelu.wybor.currentText() == 'ABG SC':
+            Dtab, DtabQPSK, Dtab16QAM, Dtab64QAM = self.ABGmodel(Lmax, LmaxQPSK, Lmax16QAM, Lmax64QAM, Ftab, 'SC')
+        elif self.wyborModelu.wybor.currentText() == 'ABG OS':
+            Dtab, DtabQPSK, Dtab16QAM, Dtab64QAM = self.ABGmodel(Lmax, LmaxQPSK, Lmax16QAM, Lmax64QAM, Ftab, 'OS')
+        elif self.wyborModelu.wybor.currentText() == 'CI SC':
+            Dtab, DtabQPSK, Dtab16QAM, Dtab64QAM = self.CImodel(Lmax, LmaxQPSK, Lmax16QAM, Lmax64QAM, Ftab, 'SC')
+        elif self.wyborModelu.wybor.currentText() == 'CI OS':
+            Dtab, DtabQPSK, Dtab16QAM, Dtab64QAM = self.CImodel(Lmax, LmaxQPSK, Lmax16QAM, Lmax64QAM, Ftab, 'OS')
+        elif self.wyborModelu.wybor.currentText() == 'WINNER II LOS':
+            Dtab, DtabQPSK, Dtab16QAM, Dtab64QAM = self.WINNERIIB1model(Ftab, Lmax, LmaxQPSK, Lmax16QAM, Lmax64QAM)
+        else:
+            self.scene.clear()
+
+        self.graphWidget = pg.PlotWidget()
+        self.graphWidget.setBackground('w')
+        self.graphWidget.addLegend(offset=(480, 10))
+
+        # self.graphWidget.setXRange(1,10000)
+        # self.graphWidget.setYRange(1,10000)
+        self.scene.addWidget(self.graphWidget)
+        # xLabelFreqdB = [10 * math.log10(x) for x in Ftab]
+        xLabelFreqdB = Ftab
+        self.plot(xLabelFreqdB, Dtab, 'Własne SNR', 'k')
+        self.plot(xLabelFreqdB, DtabQPSK, 'QPSK', 'r')
+        self.plot(xLabelFreqdB, Dtab16QAM, '16QAM', 'g')
+        self.plot(xLabelFreqdB, Dtab64QAM, '64QAM', 'b')
+        self.graphWidget.setTitle("Zasięg użyteczny [m] w funkcji częstotliwości [MHz]", color='k', size='10pt')
+        styles = {'color': 'k', 'font-size': '15px'}
+        self.graphWidget.setLabel('left', 'Odległość [m]', **styles)
+        self.graphWidget.setLabel('bottom', 'Częstotliwość f[MHz]', **styles)
+
+        # obliczanie zasiegu
+        if self.wyborModelu.wybor.currentText() == 'WPP':
+            self.calcRange(Freq, "WPP", Lmax)
+        elif self.wyborModelu.wybor.currentText() == 'ABG SC':
+            self.calcRange(Freq, "ABG SC", Lmax)
+        elif self.wyborModelu.wybor.currentText() == 'ABG OS':
+            self.calcRange(Freq, "ABG OS", Lmax)
+        elif self.wyborModelu.wybor.currentText() == 'CI SC':
+            self.calcRange(Freq, "CI SC", Lmax)
+        elif self.wyborModelu.wybor.currentText() == 'CI OS':
+            self.calcRange(Freq, "CI OS", Lmax)
+        elif self.wyborModelu.wybor.currentText() == 'WINNER II LOS':
+            self.calcRange(Freq, "WINNER II LOS", Lmax)
 
 
 def calcLossForMod(mod):
