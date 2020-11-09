@@ -30,6 +30,8 @@ class main_window(QWidget):
         self.view = QGraphicsView(self.scene)
         self.interfejs()
         self.show()
+        self.graphWidget = pg.PlotWidget()
+        self.graphWidget.showGrid(x=True, y=True)
 
     def interfejs(self):
         layout = QHBoxLayout()
@@ -37,19 +39,21 @@ class main_window(QWidget):
         fieldsLayout = QGridLayout()  # layout dla prawej części
         itemsLayout = QVBoxLayout()  # g lowny layout
 
-        self.Ptx = Parametr("Ptx", 0, 99, 10)
-        self.Gtx = Parametr("Gtx", 0, 99, 14)
-        self.Ftx = Parametr("Ftx", 0, 99, 2)
-        self.Grx = Parametr("Grx", 0, 99, 3)
-        self.Frx = Parametr("Frx", 0, 99, 1)
-        self.SNR = Parametr("SNR", -20, 99, 5)
+        self.Ptx = Parametr("Ptx [dBm]", 0, 99, 10)
+        self.Gtx = Parametr("Gtx [dBi]", 0, 99, 14)
+        self.Ftx = Parametr("Ftx [dB]", 0, 99, 2)
+        self.Grx = Parametr("Grx [dBi]", 0, 99, 3)
+        self.Frx = Parametr("Frx [dB]", 0, 99, 1)
+        self.SNR = Parametr("SNR [dB]", -20, 99, 5)
         self.bandwitch = Parametr("B [MHz]", 1, 200, 20)
-        self.Fnoise = Parametr("Fnoise", 0, 99, 5)
+        self.Fnoise = Parametr("Fnoise [dB]", 0, 99, 5)
         self.Temp = Parametr("Temp [K]", 1, 999, 293)
         self.Freq = Parametr("Freq [MHz]", MIN_FREQ, MAX_FREQ, MIN_FREQ)
+        self.CQIbox = Parametr("CQI", 1, 15, 1)
         self.wyborModelu = modelComboBox("Model propagacyjny")
         self.wyborOsiX = modelComboBox("Oś x")
         self.wynikLabel = QLabel()
+        self.wynik2Label = QLabel()
 
         fieldsLayout.addItem(self.wyborModelu, 0, 0)
         fieldsLayout.addItem(self.wyborOsiX, 0, 2)
@@ -63,7 +67,9 @@ class main_window(QWidget):
         fieldsLayout.addItem(self.Temp, 3, 1)
         fieldsLayout.addItem(self.Fnoise, 3, 2)
         fieldsLayout.addItem(self.Freq, 4, 0)
+        fieldsLayout.addItem(self.CQIbox, 5, 0)
         fieldsLayout.addWidget(self.wynikLabel, 5, 1)
+        fieldsLayout.addWidget(self.wynik2Label, 6, 1)
         fieldsLayout.setSpacing(20)
         # self.scene = QGraphicsScene()
         # scene.addText("ddddddddddddddddddddddddddddddddddddddddddddd")
@@ -81,7 +87,7 @@ class main_window(QWidget):
         # layout.addWidget(paintContainer)
         verticalSpacer = QSpacerItem(1, 50, QSizePolicy.Fixed, QSizePolicy.Expanding)
         fieldsLayout.setAlignment(Qt.AlignRight)
-        fieldsLayout.addItem(verticalSpacer, 5, 0)
+        fieldsLayout.addItem(verticalSpacer, 7, 0)
         fieldsLayout.setRowStretch(0, 1)
         fieldsLayout.setRowStretch(1, 1)
         fieldsLayout.setRowStretch(1, 1)
@@ -137,7 +143,7 @@ class main_window(QWidget):
 
         return Dtab, DtabQPSK, Dtab16QAM, Dtab64QAM
 
-    def ABGmodel(self, Lmax=0, LmaxQPSK=0, Lmax16QAM=0, Lmax64QAM=0, FdBtab=list(), type='', cqi=False, freq=0):
+    def ABGmodel(self, Lmax=0, LmaxQPSK=0, Lmax16QAM=0, Lmax64QAM=0, FdBtab=list(), type='', cqi=False, freq=0, fading=0):
         # obliczanie X
         alfa = 2
         beta = 31.4
@@ -154,6 +160,9 @@ class main_window(QWidget):
             beta = 2.4
             gamma = 1.9
             idk = 0
+
+        if fading != 0:
+            idk = fading
 
         if cqi == False:
             xTabSet = [(Lmax - beta - 10 * gamma * math.log10(x / 1000) - idk) for x in FdBtab]
@@ -172,7 +181,7 @@ class main_window(QWidget):
             d = 10 ** (x / (10 * alfa))
             return d
 
-    def CImodel(self, Lmax=0, LmaxQPSK=0, Lmax16QAM=0, Lmax64QAM=0, FdBtab=list(), type='', cqi=False, freq=0):
+    def CImodel(self, Lmax=0, LmaxQPSK=0, Lmax16QAM=0, Lmax64QAM=0, FdBtab=list(), type='', cqi=False, freq=0, fading=0):
         # obliczanie X
         n = 1
         idk = 0
@@ -180,6 +189,9 @@ class main_window(QWidget):
             n = 3.1
         elif type == 'OS':
             n = 2.8
+
+        if fading != 0:
+            idk = fading
 
         if cqi == False:
             xTabSet = [(Lmax - 20 * math.log10(4 * math.pi * x * 10 ** 6 / (3 * 10 ** 8)) - idk) for x in FdBtab]
@@ -243,42 +255,45 @@ class main_window(QWidget):
         print(dTab)
         return dTab, dQPSKTab, d16QAMTab, d64QAMTab
 
-    def calcRange(self, Freq, type, Lmax):
+    def calcRange(self, Freq, type, Lmax, fading=0, cqi=False):
         d = 0
-        self.wynikLabel.clear()
+        if fading == 0:
+            self.wynikLabel.clear()
+            self.wynik2Label.clear()
+        else:
+            self.wynik2Label.clear()
+
+        idk = fading
         if type == 'WPP':
             fdB = 20 * math.log10(Freq)
             x = Lmax - 32.4 - fdB
             d = 10 ** (x / 20)
-            self.wynikLabel.setText("d(f): " + str(round(d, 2)) + "m")
+            #self.wynikLabel.setText("d(f): " + str(round(d, 2)) + "m")
         elif type == 'ABG SC':
             alfa = 3.5
             beta = 24.4
             gamma = 1.9
-            idk = 0
             x = Lmax - beta - 10 * gamma * math.log10(Freq / 1000) - idk
             d = 10 ** (x / (10 * alfa))
-            self.wynikLabel.setText("d(f): " + str(round(d, 2)) + "m")
+            #self.wynikLabel.setText("d(f): " + str(round(d, 2)) + "m")
         elif type == 'ABG OS':
             alfa = 4.4
             beta = 2.4
             gamma = 1.9
-            idk = 0
             x = Lmax - beta - 10 * gamma * math.log10(Freq / 1000) - idk
             d = 10 ** (x / (10 * alfa))
-            self.wynikLabel.setText("d(f): " + str(round(d, 2)) + "m")
+            #self.wynikLabel.setText("d(f): " + str(round(d, 2)) + "m")
         elif type == 'CI SC':
             n = 3.1
-            idk = 0
             x = Lmax - 20 * math.log10(4 * math.pi * Freq * 10 ** 6 / (3 * 10 ** 8)) - idk
             d = 10 ** (x / (10 * n))
-            self.wynikLabel.setText("d(f): " + str(round(d, 2)) + "m")
+            #self.wynikLabel.setText("d(f): " + str(round(d, 2)) + "m")
         elif type == 'CI OS':
             n = 2.8
             idk = 0
             x = Lmax - 20 * math.log10(4 * math.pi * Freq * 10 ** 6 / (3 * 10 ** 8)) - idk
             d = 10 ** (x / (10 * n))
-            self.wynikLabel.setText("d(f): " + str(round(d, 2)) + "m")
+            #self.wynikLabel.setText("d(f): " + str(round(d, 2)) + "m")
         elif type == "WINNER II LOS":
             hbs = 10
             hms = 1.5
@@ -289,7 +304,16 @@ class main_window(QWidget):
                 d = d
             else:
                 d = 10**((Lmax - 9.45 + 17.3 * math.log10(hbs + hms) - 2.7 * math.log10(Freq/5000))/40)
-            self.wynikLabel.setText("d(f): " + str(round(d, 2)) + "m")
+
+        text = ''
+        if cqi == True:
+            text = "d(CQI): "
+        else:
+            text = "d(f): "
+        if fading == 0:
+            self.wynikLabel.setText(text + str(round(d, 2)) + "m")
+        else:
+            self.wynik2Label.setText(text + str(round(d, 2)) + "m")
 
     def freqChoosen(self,Ptx, Gtx, Ftx, Grx, Frx, SNR, bandwitch, Temp, Fnoise, Freq, k):
         # Częstoty do rysowania
@@ -310,7 +334,7 @@ class main_window(QWidget):
         # 20lg d = L - 32,4 - 20lg f
         # d = 10^(x/20)
         Dtab, DtabQPSK, Dtab16QAM, Dtab64QAM = 0, 0, 0, 0
-
+        self.graphWidget.clear()
         if self.wyborModelu.wybor.currentText() == 'ABG SC':
             Dtab, DtabQPSK, Dtab16QAM, Dtab64QAM = self.ABGmodel(Lmax, LmaxQPSK, Lmax16QAM, Lmax64QAM, Ftab, 'SC')
         elif self.wyborModelu.wybor.currentText() == 'ABG OS':
@@ -324,7 +348,6 @@ class main_window(QWidget):
         else:
             self.scene.clear()
 
-        self.graphWidget = pg.PlotWidget()
         self.graphWidget.setBackground('w')
         self.graphWidget.addLegend(offset=(480, 10))
 
@@ -364,29 +387,63 @@ class main_window(QWidget):
         # SNR USTAWIONE
         Ltab = [Ptx + Gtx - Ftx + Grx - Frx - value - N - Fnoise - 2 for value in CQItab]
 
+        mean = 0
+        sigmaABG = 8
+        sigmaCI = 8.1
+        fadingABG = abs(random.gauss(mean, sigmaABG))
+        fadingCI = abs(random.gauss(mean, sigmaCI))
         Dtab = []
+        Dfadingtab = []
         for L in Ltab:
             D = 0
+            Dfading = 0
             if self.wyborModelu.wybor.currentText() == 'ABG SC':
                 D = self.ABGmodel(L, type='SC', cqi=True, freq=Freq)
+                Dfading = self.ABGmodel(L, type='SC', cqi=True, freq=Freq, fading=fadingABG)
             elif self.wyborModelu.wybor.currentText() == 'ABG OS':
                 D = self.ABGmodel(L, type='OS', cqi=True, freq=Freq)
+                Dfading = self.ABGmodel(L, type='OS', cqi=True, freq=Freq, fading=fadingABG)
             elif self.wyborModelu.wybor.currentText() == 'CI SC':
                 D = self.CImodel(L, type='SC', cqi=True, freq=Freq)
+                Dfading = self.CImodel(L, type='SC', cqi=True, freq=Freq, fading=fadingCI)
             elif self.wyborModelu.wybor.currentText() == 'CI OS':
                 D = self.CImodel(L, type='OS', cqi=True, freq=Freq)
+                Dfading = self.CImodel(L, type='OS', cqi=True, freq=Freq, fading=fadingCI)
             Dtab.append(D)
+            Dfadingtab.append(Dfading)
 
-        self.graphWidget = pg.PlotWidget()
+        self.graphWidget.clear()
         self.graphWidget.setBackground('w')
         self.graphWidget.addLegend(offset=(480, 10))
         self.scene.addWidget(self.graphWidget)
         xLabel = CQIindex
-        self.plot(xLabel, Dtab, 'd(CQI)', 'k')
+        self.plot(xLabel, Dtab, 'd(CQI)max - bez zaników', 'k')
+        self.plot(xLabel, Dfadingtab, 'd(CQI) - z zanikami', 'r')
         self.graphWidget.setTitle("Zasięg użyteczny [m] w funkcji CQI [SNR [dB]]", color='k', size='10pt')
         styles = {'color': 'k', 'font-size': '15px'}
         self.graphWidget.setLabel('left', 'Odległość [m]', **styles)
         self.graphWidget.setLabel('bottom', 'CQI', **styles)
+
+        # obliczenie zasięgu
+
+        CQInumber = int(self.CQIbox.container.text())
+        if CQInumber > 15 or CQInumber < -1:
+            self.CQIbox.container.setText('1')
+            self.CQIbox.slider.setValue(1)
+            CQInumber = 1
+        Lmax = Ltab[CQInumber - 1]
+        if self.wyborModelu.wybor.currentText() == 'ABG SC':
+            self.calcRange(Freq, "ABG SC", Lmax, cqi=True)
+            self.calcRange(Freq, "ABG SC", Lmax, fading=fadingABG, cqi=True)
+        elif self.wyborModelu.wybor.currentText() == 'ABG OS':
+            self.calcRange(Freq, "ABG OS", Lmax, cqi=True)
+            self.calcRange(Freq, "ABG OS", Lmax, fading=fadingABG, cqi=True)
+        elif self.wyborModelu.wybor.currentText() == 'CI SC':
+            self.calcRange(Freq, "CI SC", Lmax, cqi=True)
+            self.calcRange(Freq, "CI SC", Lmax, fading=fadingCI, cqi=True)
+        elif self.wyborModelu.wybor.currentText() == 'CI OS':
+            self.calcRange(Freq, "CI OS", Lmax, cqi=True)
+            self.calcRange(Freq, "CI OS", Lmax, fading=fadingCI, cqi=True)
 
     def powerChoosen(self,Ptx, Gtx, Ftx, Grx, Frx, SNR, bandwitch, Temp, Fnoise, Freq, k):
         # Częstoty do rysowania
