@@ -2,7 +2,7 @@ from __future__ import unicode_literals
 from PyQt5.QtWidgets import QApplication, QWidget, QComboBox
 from PyQt5.QtWidgets import QLabel, QGridLayout, QSpacerItem
 from PyQt5.QtWidgets import QLineEdit, QPushButton, QHBoxLayout, QVBoxLayout, QGridLayout, QGraphicsView, \
-    QGraphicsScene, QSizePolicy, QCheckBox
+    QGraphicsScene, QSizePolicy, QCheckBox, QAction, QFileDialog
 from PyQt5.QtCore import Qt, QRect
 from Parametry import Parametr, modelComboBox, CQI
 import math
@@ -10,6 +10,9 @@ import pyqtgraph as pg
 import random
 import numpy as np
 import time
+import xlwt
+from xlwt import Workbook
+from datetime import date
 
 MAX_FREQ = 18000
 MIN_FREQ = 2000
@@ -76,12 +79,22 @@ class main_window(QWidget):
         # self.scene = QGraphicsScene()
         # scene.addText("ddddddddddddddddddddddddddddddddddddddddddddd")
         # view = QGraphicsView(self.scene)
-
         # oblcizanie
         calculateButton = QPushButton()
         calculateButton.setText("Oblicz zasięg")
         calculateButton.clicked.connect(lambda x: self.propagationModel())
         fieldsLayout.addWidget(calculateButton, 5, 2)
+
+        # zapisywanie
+        # TUTAJ DEFINICJA ELEMENTOW DO ZAPISYWANIA
+        self.savePtx, self.saveGtx, self.saveFtx, self.saveGrx, self.saveFrx, self.saveSNR, self.saveB, self.saveTemp, self.saveFnoise = 0, 1, 2, 3, 4, 5, 6, 7, 8
+        self.saveFreq = 0
+        self.saveOdleglosc, self.saveOdlegloscFading, self.saveOSX = [1, 1, 1, 1], [2, 2, 2, 2], [3, 3, 3, 3]       # test, docelowo puste, sprawdzic w saveToExcel()
+        self.saveModel, self.saveOSXname = "TEST", "TEST_NAME"
+        # TJ WSZYSTKIE PARAMETRY JAKIE SIE ZMIENIA
+        # ORAZ TABLICE WYNIKOW
+        # I NAZWE MODELU I OSI
+        self.zapiszButton.clicked.connect(lambda x: self.saveToExcel())
 
         layout.addWidget(self.view)
         self.view.show()
@@ -319,7 +332,7 @@ class main_window(QWidget):
 
     def freqChoosen(self,Ptx, Gtx, Ftx, Grx, Frx, SNR, bandwitch, Temp, Fnoise, Freq, k):
         # Częstoty do rysowania
-        Ftab = [x for x in range(MIN_FREQ, MAX_FREQ, STEP)]
+        Ftab = [x for x in range(MIN_FREQ, MAX_FREQ + STEP, STEP)]
         FdBtab = [20 * math.log10(x) for x in Ftab]
         N = 10 * math.log10((k * bandwitch * (10 ** 6) * Temp) * 1000)
         # SNR USTAWIONE
@@ -369,7 +382,8 @@ class main_window(QWidget):
                     if x == 0:
                         Dmeantab, DQPSKmeantab, D16QAMmeantab, D64QAMmeantab = np.array(Dtabfading), np.array(DtabQPSKfading),  np.array(Dtab16QAMfading), np.array(Dtab64QAMfading)
                     else:
-                        Dmeantab, DQPSKmeantab, D16QAMmeantab, D64QAMmeantab = np.add(Dmeantab, np.array(Dtabfading)), np.add(DQPSKmeantab, np.array(DtabQPSKfading)), np.add(D16QAMmeantab, np.array(Dtab16QAMfading)), np.add(D64QAMmeantab, np.array(Dtab64QAMfading))
+                        Dmeantab, DQPSKmeantab, D16QAMmeantab, D64QAMmeantab = np.add(Dmeantab, np.array(Dtabfading)), np.add(DQPSKmeantab, np.array(DtabQPSKfading)), \
+                            np.add(D16QAMmeantab, np.array(Dtab16QAMfading)), np.add(D64QAMmeantab, np.array(Dtab64QAMfading))
                 Dmeantab, DQPSKmeantab, D16QAMmeantab, D64QAMmeantab = Dmeantab / N, DQPSKmeantab / N, D16QAMmeantab / N, D64QAMmeantab / N
                 Dtabfading, DtabQPSKfading, Dtab16QAMfading, Dtab64QAMfading = Dmeantab.tolist(), DQPSKmeantab.tolist(), D16QAMmeantab.tolist(), D64QAMmeantab.tolist()
             elif self.wyborModelu.wybor.currentText() == 'ABG OS':
@@ -469,6 +483,11 @@ class main_window(QWidget):
             value = Freq - MIN_FREQ
             index = int(value / 100)
             self.wynik2Label.setText(text + str(round(Dtabfading[index], 2)) + "m")
+        #               Ptx, Gtx, Ftx, Grx, Frx, SNR, bandwitch, Temp, Fnoise, Freq,
+        self.savePtx, self.saveGtx, self.saveFtx, self.saveGrx, self.saveFrx, self.saveSNR, self.saveB, self.saveTemp, self.saveFnoise = Ptx, Gtx, Ftx, Grx, Frx, SNR, bandwitch, Temp, Fnoise
+        self.saveOdlegloscFading, self.saveOdleglosc, self.saveOSX = [round(x, 2) for x in Dtabfading], [round(x, 2) for x in Dtab], Ftab  # test, docelowo puste, sprawdzic w saveToExcel()
+        self.saveOSXname = "Częstotliwość [MHz]"
+        self.saveModel = self.wyborModelu.wybor.currentText()
 
     def CQIchoosen(self,Ptx, Gtx, Ftx, Grx, Frx, SNR, bandwitch, Temp, Fnoise, Freq, k):
         CQItab = [-7.8474, -6.2369, -4.3591, -1.9319, 0.1509, 1.9976, 4.7278, 6.2231, 8.0591, 9.8585, 11.8432, 13.4893, 15.3598, 17.4435,
@@ -608,70 +627,64 @@ class main_window(QWidget):
             text = "d'(CQI): "
             self.wynik2Label.setText(text + str(round(Dfadingtab[CQInumber - 1], 2)) + "m")
 
-    def powerChoosen(self,Ptx, Gtx, Ftx, Grx, Frx, SNR, bandwitch, Temp, Fnoise, Freq, k):
-        # Częstoty do rysowania
-        Ftab = [x for x in range(MIN_FREQ, MAX_FREQ, 100)]
-        FdBtab = [20 * math.log10(x) for x in Ftab]
-        N = 10 * math.log10((k * bandwitch * (10 ** 6) * Temp) * 1000)
-        # SNR USTAWIONE
-        Lmax = Ptx + Gtx - Ftx + Grx - Frx - SNR - N - Fnoise - 2
-        # Lmax dla QPSK
-        LmaxQPSK = Ptx + Gtx - Ftx + Grx - Frx - calcLossForMod('QPSK') - N - Fnoise - 2
-        # Lmax dla 16QAM
-        Lmax16QAM = Ptx + Gtx - Ftx + Grx - Frx - calcLossForMod('16QAM') - N - Fnoise - 2
-        # Lmax dla 64QAM
-        Lmax64QAM = Ptx + Gtx - Ftx + Grx - Frx - calcLossForMod('64QAM') - N - Fnoise - 2
+        self.savePtx, self.saveGtx, self.saveFtx, self.saveGrx, self.saveFrx, self.saveFreq, self.saveB, self.saveTemp, self.saveFnoise = Ptx, Gtx, Ftx, Grx, Frx, Freq, bandwitch, Temp, Fnoise
+        self.saveOdlegloscFading, self.saveOdleglosc, self.saveOSX = [round(x, 2) for x in Dfadingtab], [round(x, 2) for x in Dtab], CQIindex  # test, docelowo puste, sprawdzic w saveToExcel()
+        self.saveOSXname = "CQI"
+        self.saveModel = self.wyborModelu.wybor.currentText()
 
-        # WPP
-        # L = 32,4 +20lg f [MHz] + 20lg d [km]
-        # 20lg d = L - 32,4 - 20lg f
-        # d = 10^(x/20)
-        Dtab, DtabQPSK, Dtab16QAM, Dtab64QAM = 0, 0, 0, 0
+    def saveToExcel(self):
+        name = QFileDialog.getSaveFileName(self, 'Zapisz plik')
+        actualname = str(name[0])
+        if '.xls' in actualname:
+            actualname = actualname.replace('.xls', '')
+        wb = Workbook()
+        sheet1 = wb.add_sheet('Zasięg')
+        t = time.localtime()
+        today = date.today()
+        todaydate = today.strftime("%d/%m/%Y")
+        currentTime = time.strftime("%H:%M:%S", t)        # wiersz, kolumna
 
-        if self.wyborModelu.wybor.currentText() == 'ABG SC':
-            Dtab, DtabQPSK, Dtab16QAM, Dtab64QAM = self.ABGmodel(Lmax, LmaxQPSK, Lmax16QAM, Lmax64QAM, Ftab, 'SC')
-        elif self.wyborModelu.wybor.currentText() == 'ABG OS':
-            Dtab, DtabQPSK, Dtab16QAM, Dtab64QAM = self.ABGmodel(Lmax, LmaxQPSK, Lmax16QAM, Lmax64QAM, Ftab, 'OS')
-        elif self.wyborModelu.wybor.currentText() == 'CI SC':
-            Dtab, DtabQPSK, Dtab16QAM, Dtab64QAM = self.CImodel(Lmax, LmaxQPSK, Lmax16QAM, Lmax64QAM, Ftab, 'SC')
-        elif self.wyborModelu.wybor.currentText() == 'CI OS':
-            Dtab, DtabQPSK, Dtab16QAM, Dtab64QAM = self.CImodel(Lmax, LmaxQPSK, Lmax16QAM, Lmax64QAM, Ftab, 'OS')
-        elif self.wyborModelu.wybor.currentText() == 'WINNER II LOS':
-            Dtab, DtabQPSK, Dtab16QAM, Dtab64QAM = self.WINNERIIB1model(Ftab, Lmax, LmaxQPSK, Lmax16QAM, Lmax64QAM)
+        #style = xlwt.easyxf('font: bold 1')
+
+        sheet1.write(0, 0, self.saveModel)
+        sheet1.write(0, 2, currentTime)
+        sheet1.write(0, 3, todaydate)
+        sheet1.write(1, 0, 'Ptx [dBm]')
+        sheet1.write(1, 1, 'Gtx [dBm]')
+        sheet1.write(1, 2, 'Ftx [dBm]')
+        sheet1.write(1, 3, 'Grx [dBm]')
+        sheet1.write(1, 4, 'Frx [dBm]')
+
+        sheet1.write(1, 6, 'Bandwidth [MHz]')
+        sheet1.write(1, 7, 'Temp [K]')
+        sheet1.write(1, 8, 'Fnoise [dBm]')
+        sheet1.write(2, 0, self.savePtx)
+        sheet1.write(2, 1, self.saveGtx)
+        sheet1.write(2, 2, self.saveFtx)
+        sheet1.write(2, 3, self.saveGrx)
+        sheet1.write(2, 4, self.saveFrx)
+        if self.saveOSXname == "CQI":
+            sheet1.write(2, 5, self.saveFreq)
+            sheet1.write(1, 5, 'Freq [MHz]')
         else:
-            self.scene.clear()
+            sheet1.write(2, 5, self.saveSNR)
+            sheet1.write(1, 5, 'SNR [dBm]')
+        sheet1.write(2, 6, self.saveB)
+        sheet1.write(2, 7, self.saveTemp)
+        sheet1.write(2, 8, self.saveFnoise)
+        sheet1.write(3, 0, self.saveOSXname)
+        sheet1.write(3, 1, "Odległość z zanikami [d]: ")
+        sheet1.write(3, 2, "Odległość bez zaników [d]: ")
 
-        self.graphWidget = pg.PlotWidget()
-        self.graphWidget.setBackground('w')
-        self.graphWidget.addLegend(offset=(480, 10))
+        for i, x in enumerate(self.saveOSX):
+            sheet1.write(4 + i, 0, x)
+        for i, x in enumerate(self.saveOdlegloscFading):
+            sheet1.write(4 + i, 1, x)
+        for i, x in enumerate(self.saveOdleglosc):
+            sheet1.write(4 + i, 2, x)
 
-        # self.graphWidget.setXRange(1,10000)
-        # self.graphWidget.setYRange(1,10000)
-        self.scene.addWidget(self.graphWidget)
-        # xLabelFreqdB = [10 * math.log10(x) for x in Ftab]
-        xLabelFreqdB = Ftab
-        self.plot(xLabelFreqdB, Dtab, 'Własne SNR', 'k')
-        self.plot(xLabelFreqdB, DtabQPSK, 'QPSK', 'r')
-        self.plot(xLabelFreqdB, Dtab16QAM, '16QAM', 'g')
-        self.plot(xLabelFreqdB, Dtab64QAM, '64QAM', 'b')
-        self.graphWidget.setTitle("Zasięg użyteczny [m] w funkcji częstotliwości [MHz]", color='k', size='10pt')
-        styles = {'color': 'k', 'font-size': '15px'}
-        self.graphWidget.setLabel('left', 'Odległość [m]', **styles)
-        self.graphWidget.setLabel('bottom', 'Częstotliwość f[MHz]', **styles)
 
-        # obliczanie zasiegu
-        if self.wyborModelu.wybor.currentText() == 'WPP':
-            self.calcRange(Freq, "WPP", Lmax)
-        elif self.wyborModelu.wybor.currentText() == 'ABG SC':
-            self.calcRange(Freq, "ABG SC", Lmax)
-        elif self.wyborModelu.wybor.currentText() == 'ABG OS':
-            self.calcRange(Freq, "ABG OS", Lmax)
-        elif self.wyborModelu.wybor.currentText() == 'CI SC':
-            self.calcRange(Freq, "CI SC", Lmax)
-        elif self.wyborModelu.wybor.currentText() == 'CI OS':
-            self.calcRange(Freq, "CI OS", Lmax)
-        elif self.wyborModelu.wybor.currentText() == 'WINNER II LOS':
-            self.calcRange(Freq, "WINNER II LOS", Lmax)
+        wb.save(actualname + '.xls')
 
 
 def calcLossForMod(mod):

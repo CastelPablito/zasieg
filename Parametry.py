@@ -29,6 +29,7 @@ class Parametr(QVBoxLayout):
         myValidator = QIntValidator(minimum, maksimum, self.container)
         self.container.setValidator(myValidator)
         self.slider.setRange(minimum, maksimum)
+        self.slider.setValue(defaultValue)
         # self.container.textChanged.connect(lambda x: self.slider.setValue(int(x)))     # działa ale w pewnym momencie wywala ;/
         self.slider.valueChanged.connect(lambda x: self.container.setText(str(x)))
         # self.container.textChanged.connect(lambda x: main_window.propagationModel())
