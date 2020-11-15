@@ -2,7 +2,7 @@ from __future__ import unicode_literals
 from PyQt5.QtWidgets import QApplication, QWidget, QComboBox
 from PyQt5.QtWidgets import QLabel, QGridLayout, QSpacerItem
 from PyQt5.QtWidgets import QLineEdit, QPushButton, QHBoxLayout, QVBoxLayout, QGridLayout, QGraphicsView, \
-    QGraphicsScene, QSizePolicy, QCheckBox, QAction, QFileDialog
+    QGraphicsScene, QSizePolicy, QCheckBox, QAction, QFileDialog, QMessageBox
 from PyQt5.QtCore import Qt, QRect
 from Parametry import Parametr, modelComboBox, CQI
 import math
@@ -13,6 +13,7 @@ import time
 import xlwt
 from xlwt import Workbook
 from datetime import date
+import openpyxl
 
 MAX_FREQ = 18000
 MIN_FREQ = 2000
@@ -637,55 +638,79 @@ class main_window(QWidget):
         actualname = str(name[0])
         if '.xls' in actualname:
             actualname = actualname.replace('.xls', '')
+
         wb = Workbook()
         sheet1 = wb.add_sheet('Zasięg')
         t = time.localtime()
         today = date.today()
         todaydate = today.strftime("%d/%m/%Y")
-        currentTime = time.strftime("%H:%M:%S", t)        # wiersz, kolumna
+        currentTime = time.strftime("%H:%M:%S", t)
 
-        #style = xlwt.easyxf('font: bold 1')
+        # wiersz, kolumna
+        style = xlwt.easyxf('font: bold 1')
 
-        sheet1.write(0, 0, self.saveModel)
-        sheet1.write(0, 2, currentTime)
-        sheet1.write(0, 3, todaydate)
-        sheet1.write(1, 0, 'Ptx [dBm]')
-        sheet1.write(1, 1, 'Gtx [dBm]')
-        sheet1.write(1, 2, 'Ftx [dBm]')
-        sheet1.write(1, 3, 'Grx [dBm]')
-        sheet1.write(1, 4, 'Frx [dBm]')
+        sheet1.write(0, 5, self.saveModel, style)
+        sheet1.write(0, 6, todaydate)
+        sheet1.write(0, 7, currentTime)
+        sheet1.write(2, 5, 'Ptx', style)
+        sheet1.write(3, 5, 'Gtx', style)
+        sheet1.write(4, 5, 'Ftx', style)
+        sheet1.write(5, 5, 'Grx', style)
+        sheet1.write(6, 5, 'Frx', style)
 
-        sheet1.write(1, 6, 'Bandwidth [MHz]')
-        sheet1.write(1, 7, 'Temp [K]')
-        sheet1.write(1, 8, 'Fnoise [dBm]')
-        sheet1.write(2, 0, self.savePtx)
-        sheet1.write(2, 1, self.saveGtx)
-        sheet1.write(2, 2, self.saveFtx)
-        sheet1.write(2, 3, self.saveGrx)
-        sheet1.write(2, 4, self.saveFrx)
+        sheet1.write(8, 5, 'Bandwidth', style)
+        sheet1.write(9, 5, 'Temp', style)
+        sheet1.write(10, 5, 'Fnoise', style)
+        sheet1.write(2, 7, self.savePtx)
+        sheet1.write(3, 7, self.saveGtx)
+        sheet1.write(4, 7, self.saveFtx)
+        sheet1.write(5, 7, self.saveGrx)
+        sheet1.write(6, 7, self.saveFrx)
         if self.saveOSXname == "CQI":
-            sheet1.write(2, 5, self.saveFreq)
-            sheet1.write(1, 5, 'Freq [MHz]')
+            sheet1.write(7, 7, self.saveFreq)
+            sheet1.write(7, 5, 'Freq', style)
+            sheet1.write(7, 6, 'MHz', style)
+            sheet1.col(0).width = 3000
         else:
-            sheet1.write(2, 5, self.saveSNR)
-            sheet1.write(1, 5, 'SNR [dBm]')
-        sheet1.write(2, 6, self.saveB)
-        sheet1.write(2, 7, self.saveTemp)
-        sheet1.write(2, 8, self.saveFnoise)
-        sheet1.write(3, 0, self.saveOSXname)
-        sheet1.write(3, 1, "Odległość z zanikami [d]: ")
-        sheet1.write(3, 2, "Odległość bez zaników [d]: ")
+            sheet1.write(7, 7, self.saveSNR)
+            sheet1.write(7, 5, 'SNR', style)
+            sheet1.write(7, 6, 'dBm', style)
+            sheet1.col(0).width = 5000
+        sheet1.write(8, 7, self.saveB)
+        sheet1.write(9, 7, self.saveTemp)
+        sheet1.write(10, 7, self.saveFnoise)
+        sheet1.write(0, 0, self.saveOSXname, style)
+        sheet1.write(2, 6, 'dBm', style)
+        sheet1.write(3, 6, 'dBm', style)
+        sheet1.write(4, 6, 'dBm', style)
+        sheet1.write(5, 6, 'dBm', style)
+        sheet1.write(6, 6, 'dBm', style)
+        sheet1.write(8, 6, 'MHz', style)
+        sheet1.write(9, 6, 'K', style)
+        sheet1.write(10, 6, 'dBm', style)
+
+        sheet1.write(0, 1, "Odległość z zanikami [m]: ", style)
+        sheet1.write(0, 2, "Odległość bez zaników [m]: ", style)
 
         for i, x in enumerate(self.saveOSX):
-            sheet1.write(4 + i, 0, x)
+            sheet1.write(1 + i, 0, x)
         for i, x in enumerate(self.saveOdlegloscFading):
-            sheet1.write(4 + i, 1, x)
+            sheet1.write(1 + i, 1, x)
         for i, x in enumerate(self.saveOdleglosc):
-            sheet1.write(4 + i, 2, x)
+            sheet1.write(1 + i, 2, x)
 
+        sheet1.col(1).width = 6200
+        sheet1.col(2).width = 6400
+        sheet1.col(5).width = 4000
 
-        wb.save(actualname + '.xls')
-
+        try:
+            wb.save(actualname + '.xls')
+        except PermissionError:
+            msg = QMessageBox()
+            msg.setWindowTitle("Błąd zapisu!")
+            msg.setText("Upewnij się, że ten plik nie jest otwarty")
+            x = msg.exec_()
+            msg.setIcon(QMessageBox.Critical)
 
 def calcLossForMod(mod):
     SNR = 0
