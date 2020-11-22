@@ -4,6 +4,7 @@ from PyQt5.QtWidgets import QLabel, QGridLayout, QSpacerItem
 from PyQt5.QtWidgets import QLineEdit, QPushButton, QHBoxLayout, QVBoxLayout, QGridLayout, QGraphicsView, \
     QGraphicsScene, QSizePolicy, QCheckBox, QAction, QFileDialog, QMessageBox
 from PyQt5.QtCore import Qt, QRect
+from PyQt5.QtGui import QIcon
 from Parametry import Parametr, modelComboBox, CQI
 import math
 import pyqtgraph as pg
@@ -24,6 +25,7 @@ class main_window(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setGeometry(450, 200, 1100, 550)
+        self.setWindowIcon(QIcon("logo.png"))
         self.setWindowTitle("NRange")
         self.scene = QGraphicsScene()
         self.view = QGraphicsView(self.scene)
@@ -39,15 +41,15 @@ class main_window(QWidget):
         itemsLayout = QVBoxLayout()  # g lowny layout
 
         self.Ptx = Parametr("Ptx [dBm]", 0, 99, 10)
-        self.Gtx = Parametr("Gtx [dBi]", 0, 99, 14)
+        self.Gtx = Parametr("Gtx [dBi]", 0, 99, 10)
         self.Ftx = Parametr("Ftx [dB]", 0, 99, 2)
         self.Grx = Parametr("Grx [dBi]", 0, 99, 3)
         self.Frx = Parametr("Frx [dB]", 0, 99, 1)
         self.SNR = Parametr("SNR [dB]", -20, 99, 5)
-        self.bandwitch = Parametr("B [MHz]", 1, 200, 20)
+        self.bandwitch = Parametr("B [MHz]", 1, 200, 40)
         self.Fnoise = Parametr("Fnoise [dB]", 0, 99, 5)
         self.Temp = Parametr("Temp [K]", 1, 999, 293)
-        self.Freq = Parametr("Freq [MHz]", MIN_FREQ, MAX_FREQ, MIN_FREQ)
+        self.Freq = Parametr("Freq [MHz]", MIN_FREQ, MAX_FREQ, MIN_FREQ + 1600)
         self.CQIbox = Parametr("CQI", 1, 15, 1)
         self.wyborModelu = modelComboBox("Model propagacyjny")
         self.wyborOsiX = modelComboBox("Oś x")
@@ -296,9 +298,9 @@ class main_window(QWidget):
             x = Lmax - beta - 10 * gamma * math.log10(Freq / 1000) - idk
             d = 10 ** (x / (10 * alfa))
         elif type == 'ABG OS':
-            alfa = 4.4
-            beta = 2.4
-            gamma = 1.9
+            alfa = 4.7
+            beta = -3.1
+            gamma = 1.8
             x = Lmax - beta - 10 * gamma * math.log10(Freq / 1000) - idk
             d = 10 ** (x / (10 * alfa))
         elif type == 'CI SC':
@@ -346,10 +348,14 @@ class main_window(QWidget):
         Lmax64QAM = Ptx + Gtx - Ftx + Grx - Frx - calcLossForMod('64QAM') - N - Fnoise - 2
 
         mean = 0
-        sigmaABG = 8
-        sigmaCI = 8.1
-        fadingABG = abs(random.gauss(mean, sigmaABG))
-        fadingCI = abs(random.gauss(mean, sigmaCI))
+        sigmaABGsc = 8
+        sigmaCIsc = 8.1
+        sigmaABGos = 7.6
+        sigmaCIos = 8.3
+        fadingABGsc = abs(random.gauss(mean, sigmaABGsc))
+        fadingCIsc = abs(random.gauss(mean, sigmaCIsc))
+        fadingABGos = abs(random.gauss(mean, sigmaABGos))
+        fadingCIos = abs(random.gauss(mean, sigmaCIos))
 
         Dtab, DtabQPSK, Dtab16QAM, Dtab64QAM = 0, 0, 0, 0
         Dtabfading, DtabQPSKfading, Dtab16QAMfading, Dtab64QAMfading = 0, 0, 0, 0
@@ -358,16 +364,16 @@ class main_window(QWidget):
         if not self.usrednianieButton.isChecked():
             if self.wyborModelu.wybor.currentText() == 'ABG SC':
                 Dtab, DtabQPSK, Dtab16QAM, Dtab64QAM = self.ABGmodel(Lmax, LmaxQPSK, Lmax16QAM, Lmax64QAM, Ftab, 'SC')
-                Dtabfading, DtabQPSKfading, Dtab16QAMfading, Dtab64QAMfading = self.ABGmodel(Lmax, LmaxQPSK, Lmax16QAM, Lmax64QAM, Ftab, 'SC', fading=fadingABG)
+                Dtabfading, DtabQPSKfading, Dtab16QAMfading, Dtab64QAMfading = self.ABGmodel(Lmax, LmaxQPSK, Lmax16QAM, Lmax64QAM, Ftab, 'SC', fading=fadingABGsc)
             elif self.wyborModelu.wybor.currentText() == 'ABG OS':
                 Dtab, DtabQPSK, Dtab16QAM, Dtab64QAM = self.ABGmodel(Lmax, LmaxQPSK, Lmax16QAM, Lmax64QAM, Ftab, 'OS')
-                Dtabfading, DtabQPSKfading, Dtab16QAMfading, Dtab64QAMfading = self.ABGmodel(Lmax, LmaxQPSK, Lmax16QAM, Lmax64QAM, Ftab, 'OS', fading=fadingABG)
+                Dtabfading, DtabQPSKfading, Dtab16QAMfading, Dtab64QAMfading = self.ABGmodel(Lmax, LmaxQPSK, Lmax16QAM, Lmax64QAM, Ftab, 'OS', fading=fadingABGos)
             elif self.wyborModelu.wybor.currentText() == 'CI SC':
                 Dtab, DtabQPSK, Dtab16QAM, Dtab64QAM = self.CImodel(Lmax, LmaxQPSK, Lmax16QAM, Lmax64QAM, Ftab, 'SC')
-                Dtabfading, DtabQPSKfading, Dtab16QAMfading, Dtab64QAMfading = self.CImodel(Lmax, LmaxQPSK, Lmax16QAM, Lmax64QAM, Ftab, 'SC', fading=fadingCI)
+                Dtabfading, DtabQPSKfading, Dtab16QAMfading, Dtab64QAMfading = self.CImodel(Lmax, LmaxQPSK, Lmax16QAM, Lmax64QAM, Ftab, 'SC', fading=fadingCIsc)
             elif self.wyborModelu.wybor.currentText() == 'CI OS':
                 Dtab, DtabQPSK, Dtab16QAM, Dtab64QAM = self.CImodel(Lmax, LmaxQPSK, Lmax16QAM, Lmax64QAM, Ftab, 'OS')
-                Dtabfading, DtabQPSKfading, Dtab16QAMfading, Dtab64QAMfading = self.CImodel(Lmax, LmaxQPSK, Lmax16QAM, Lmax64QAM, Ftab, 'OS', fading=fadingCI)
+                Dtabfading, DtabQPSKfading, Dtab16QAMfading, Dtab64QAMfading = self.CImodel(Lmax, LmaxQPSK, Lmax16QAM, Lmax64QAM, Ftab, 'OS', fading=fadingCIos)
             elif self.wyborModelu.wybor.currentText() == 'WINNER II LOS':
                 Dtab, DtabQPSK, Dtab16QAM, Dtab64QAM = self.WINNERIIB1model(Ftab, Lmax, LmaxQPSK, Lmax16QAM, Lmax64QAM)
             else:
@@ -378,7 +384,7 @@ class main_window(QWidget):
                 Dmeantab, DQPSKmeantab, D16QAMmeantab, D64QAMmeantab = np.array([]), np.array([]),  np.array([]), np.array([])
                 N = 1000
                 for x in range(N):
-                    fadingABG = abs(random.gauss(mean, sigmaABG))
+                    fadingABG = abs(random.gauss(mean, sigmaABGsc))
                     Dtabfading, DtabQPSKfading, Dtab16QAMfading, Dtab64QAMfading = self.ABGmodel(Lmax, LmaxQPSK, Lmax16QAM, Lmax64QAM, Ftab, 'SC', fading=fadingABG)
                     if x == 0:
                         Dmeantab, DQPSKmeantab, D16QAMmeantab, D64QAMmeantab = np.array(Dtabfading), np.array(DtabQPSKfading),  np.array(Dtab16QAMfading), np.array(Dtab64QAMfading)
@@ -392,7 +398,7 @@ class main_window(QWidget):
                 Dmeantab, DQPSKmeantab, D16QAMmeantab, D64QAMmeantab = np.array([]), np.array([]), np.array([]), np.array([])
                 N = 1000
                 for x in range(N):
-                    fadingABG = abs(random.gauss(mean, sigmaABG))
+                    fadingABG = abs(random.gauss(mean, sigmaABGos))
                     Dtabfading, DtabQPSKfading, Dtab16QAMfading, Dtab64QAMfading = self.ABGmodel(Lmax, LmaxQPSK, Lmax16QAM, Lmax64QAM, Ftab, 'OS', fading=fadingABG)
                     if x == 0:
                         Dmeantab, DQPSKmeantab, D16QAMmeantab, D64QAMmeantab = np.array(Dtabfading), np.array(DtabQPSKfading), np.array(Dtab16QAMfading), np.array(Dtab64QAMfading)
@@ -406,7 +412,7 @@ class main_window(QWidget):
                 Dmeantab, DQPSKmeantab, D16QAMmeantab, D64QAMmeantab = np.array([]), np.array([]), np.array([]), np.array([])
                 N = 1000
                 for x in range(N):
-                    fadingCI = abs(random.gauss(mean, sigmaCI))
+                    fadingCI = abs(random.gauss(mean, sigmaCIsc))
                     Dtabfading, DtabQPSKfading, Dtab16QAMfading, Dtab64QAMfading = self.CImodel(Lmax, LmaxQPSK, Lmax16QAM, Lmax64QAM, Ftab, 'SC', fading=fadingCI)
                     if x == 0:
                         Dmeantab, DQPSKmeantab, D16QAMmeantab, D64QAMmeantab = np.array(Dtabfading), np.array(DtabQPSKfading), np.array(Dtab16QAMfading), np.array(Dtab64QAMfading)
@@ -420,7 +426,7 @@ class main_window(QWidget):
                 Dmeantab, DQPSKmeantab, D16QAMmeantab, D64QAMmeantab = np.array([]), np.array([]), np.array([]), np.array([])
                 N = 1000
                 for x in range(N):
-                    fadingCI = abs(random.gauss(mean, sigmaCI))
+                    fadingCI = abs(random.gauss(mean, sigmaCIos))
                     Dtabfading, DtabQPSKfading, Dtab16QAMfading, Dtab64QAMfading = self.CImodel(Lmax, LmaxQPSK, Lmax16QAM, Lmax64QAM, Ftab, 'OS', fading=fadingCI)
                     if x == 0:
                         Dmeantab, DQPSKmeantab, D16QAMmeantab, D64QAMmeantab = np.array(Dtabfading), np.array(DtabQPSKfading), np.array(Dtab16QAMfading), np.array(Dtab64QAMfading)
@@ -431,7 +437,7 @@ class main_window(QWidget):
                 Dtabfading, DtabQPSKfading, Dtab16QAMfading, Dtab64QAMfading = Dmeantab.tolist(), DQPSKmeantab.tolist(), D16QAMmeantab.tolist(), D64QAMmeantab.tolist()
 
         self.graphWidget.setBackground('w')
-        self.graphWidget.addLegend(offset=(400, 10))
+        self.graphWidget.addLegend(offset=(380, 10))
 
         # self.graphWidget.setXRange(1,10000)
         # self.graphWidget.setYRange(1,10000)
@@ -448,8 +454,8 @@ class main_window(QWidget):
         self.plot(xLabelFreqdB, Dtab64QAMfading, '64QAM', 'b', dash=True)
         self.graphWidget.setTitle("Zasięg użyteczny [m] w funkcji częstotliwości [MHz]", color='k', size='10pt')
         styles = {'color': 'k', 'font-size': '15px'}
-        self.graphWidget.setLabel('left', 'Odległość [m]', **styles)
-        self.graphWidget.setLabel('bottom', 'Częstotliwość f[MHz]', **styles)
+        self.graphWidget.setLabel('left', 'Zasięg [m]', **styles)
+        self.graphWidget.setLabel('bottom', 'Częstotliwość f [MHz]', **styles)
 
         # obliczanie zasiegu
         if self.wyborModelu.wybor.currentText() == 'ABG SC':
@@ -499,10 +505,14 @@ class main_window(QWidget):
         Ltab = [Ptx + Gtx - Ftx + Grx - Frx - value - N - Fnoise - 2 for value in CQItab]
 
         mean = 0
-        sigmaABG = 8
-        sigmaCI = 8.1
-        fadingABG = abs(random.gauss(mean, sigmaABG))
-        fadingCI = abs(random.gauss(mean, sigmaCI))
+        sigmaABGsc = 8
+        sigmaCIsc = 8.1
+        sigmaABGos = 7.6
+        sigmaCIos = 8.3
+        fadingABGsc = abs(random.gauss(mean, sigmaABGsc))
+        fadingCIsc = abs(random.gauss(mean, sigmaCIsc))
+        fadingABGos = abs(random.gauss(mean, sigmaABGos))
+        fadingCIos = abs(random.gauss(mean, sigmaCIos))
         Dtab = []
         Dfadingtab = []
 
@@ -512,16 +522,16 @@ class main_window(QWidget):
                 Dfading = 0
                 if self.wyborModelu.wybor.currentText() == 'ABG SC':
                     D = self.ABGmodel(L, type='SC', cqi=True, freq=Freq)
-                    Dfading = self.ABGmodel(L, type='SC', cqi=True, freq=Freq, fading=fadingABG)
+                    Dfading = self.ABGmodel(L, type='SC', cqi=True, freq=Freq, fading=fadingABGsc)
                 elif self.wyborModelu.wybor.currentText() == 'ABG OS':
                     D = self.ABGmodel(L, type='OS', cqi=True, freq=Freq)
-                    Dfading = self.ABGmodel(L, type='OS', cqi=True, freq=Freq, fading=fadingABG)
+                    Dfading = self.ABGmodel(L, type='OS', cqi=True, freq=Freq, fading=fadingABGos)
                 elif self.wyborModelu.wybor.currentText() == 'CI SC':
                     D = self.CImodel(L, type='SC', cqi=True, freq=Freq)
-                    Dfading = self.CImodel(L, type='SC', cqi=True, freq=Freq, fading=fadingCI)
+                    Dfading = self.CImodel(L, type='SC', cqi=True, freq=Freq, fading=fadingCIsc)
                 elif self.wyborModelu.wybor.currentText() == 'CI OS':
                     D = self.CImodel(L, type='OS', cqi=True, freq=Freq)
-                    Dfading = self.CImodel(L, type='OS', cqi=True, freq=Freq, fading=fadingCI)
+                    Dfading = self.CImodel(L, type='OS', cqi=True, freq=Freq, fading=fadingCIos)
                 Dtab.append(D)
                 Dfadingtab.append(Dfading)
         else:
@@ -530,8 +540,7 @@ class main_window(QWidget):
                 Dmeantab = np.array([])
                 N = 1000
                 for x in range(N):
-                    fadingABG = abs(random.gauss(mean, sigmaABG))
-                    fadingCI = abs(random.gauss(mean, sigmaCI))
+                    fadingABG = abs(random.gauss(mean, sigmaABGsc))
                     Dfadingtab = [self.ABGmodel(L, type='SC', cqi=True, freq=Freq, fading=fadingABG) for L in Ltab]
                     if x == 0:
                         Dmeantab = np.array(Dfadingtab)
@@ -544,8 +553,7 @@ class main_window(QWidget):
                 Dmeantab = np.array([])
                 N = 1000
                 for x in range(N):
-                    fadingABG = abs(random.gauss(mean, sigmaABG))
-                    fadingCI = abs(random.gauss(mean, sigmaCI))
+                    fadingABG = abs(random.gauss(mean, sigmaABGos))
                     Dfadingtab = [self.ABGmodel(L, type='OS', cqi=True, freq=Freq, fading=fadingABG) for L in Ltab]
                     if x == 0:
                         Dmeantab = np.array(Dfadingtab)
@@ -558,9 +566,8 @@ class main_window(QWidget):
                 Dmeantab = np.array([])
                 N = 1000
                 for x in range(N):
-                    fadingABG = abs(random.gauss(mean, sigmaABG))
-                    fadingCI = abs(random.gauss(mean, sigmaCI))
-                    Dfadingtab = [self.CImodel(L, type='SC', cqi=True, freq=Freq, fading=fadingABG) for L in Ltab]
+                    fadingCI = abs(random.gauss(mean, sigmaCIsc))
+                    Dfadingtab = [self.CImodel(L, type='SC', cqi=True, freq=Freq, fading=fadingCI) for L in Ltab]
                     if x == 0:
                         Dmeantab = np.array(Dfadingtab)
                     else:
@@ -572,9 +579,8 @@ class main_window(QWidget):
                 Dmeantab = np.array([])
                 N = 1000
                 for x in range(N):
-                    fadingABG = abs(random.gauss(mean, sigmaABG))
-                    fadingCI = abs(random.gauss(mean, sigmaCI))
-                    Dfadingtab = [self.CImodel(L, type='OS', cqi=True, freq=Freq, fading=fadingABG) for L in Ltab]
+                    fadingCI = abs(random.gauss(mean, sigmaCIos))
+                    Dfadingtab = [self.CImodel(L, type='OS', cqi=True, freq=Freq, fading=fadingCI) for L in Ltab]
                     if x == 0:
                         Dmeantab = np.array(Dfadingtab)
                     else:
@@ -590,9 +596,9 @@ class main_window(QWidget):
         xLabel = CQIindex
         self.plot(xLabel, Dtab, 'd(CQI) - bez zaników', 'k')
         self.plot(xLabel, Dfadingtab, 'd(CQI) - z zanikami', 'r')
-        self.graphWidget.setTitle("Zasięg użyteczny [m] w funkcji CQI [SNR [dB]]", color='k', size='10pt')
+        self.graphWidget.setTitle("Zasięg użyteczny [m] w funkcji CQI", color='k', size='10pt')
         styles = {'color': 'k', 'font-size': '15px'}
-        self.graphWidget.setLabel('left', 'Odległość [m]', **styles)
+        self.graphWidget.setLabel('left', 'Zasięg [m]', **styles)
         self.graphWidget.setLabel('bottom', 'CQI', **styles)
 
         # obliczenie zasięgu
@@ -715,11 +721,11 @@ class main_window(QWidget):
 def calcLossForMod(mod):
     SNR = 0
     if mod == 'QPSK':  # CQI 1,2,3,4,5,6
-        SNR = -8
+        SNR = -7
     elif mod == '16QAM':  # CQI 7,8,9
         SNR = 6
     elif mod == "64QAM":  # CQI 10,11,12,13,14,15
-        SNR = 15
+        SNR = 10
     else:
         SNR = -20
     return SNR
