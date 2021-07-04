@@ -6,7 +6,7 @@
   <component name="ChangeListManager">
     <list default="true" id="0965bbf7-ea4b-4f81-8aa8-26971ff9d672" name="Default Changelist" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/main.py" beforeDir="false" afterPath="$PROJECT_DIR$/main.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Parametry.py" beforeDir="false" afterPath="$PROJECT_DIR$/Parametry.py" afterDir="false" />
     </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
     <option name="SHOW_DIALOG" value="false" />
@@ -19,8 +19,8 @@
       <file pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/main.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="-2870">
-              <caret line="457" column="61" selection-start-line="457" selection-start-column="61" selection-end-line="457" selection-end-column="61" />
+            <state relative-caret-position="-6860">
+              <caret line="53" selection-start-line="53" selection-end-line="53" />
               <folding>
                 <element signature="e#0#39#0" expanded="true" />
               </folding>
@@ -31,11 +31,8 @@
       <file pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/Parametry.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="500">
-              <caret line="31" column="41" selection-start-line="31" selection-start-column="41" selection-end-line="31" selection-end-column="41" />
-              <folding>
-                <element signature="e#0#49#0" expanded="true" />
-              </folding>
+            <state relative-caret-position="100">
+              <caret line="8" selection-start-line="8" selection-end-line="8" />
             </state>
           </provider>
         </entry>
@@ -56,6 +53,8 @@
       <find>plot</find>
       <find>zas</find>
       <find>odle</find>
+      <find>np</find>
+      <find>np.</find>
     </findStrings>
   </component>
   <component name="Git.Settings">
@@ -65,16 +64,16 @@
     <option name="CHANGED_PATHS">
       <list>
         <option value="$PROJECT_DIR$/parametry.py" />
-        <option value="$PROJECT_DIR$/Parametry.py" />
         <option value="$PROJECT_DIR$/main.py" />
+        <option value="$PROJECT_DIR$/Parametry.py" />
       </list>
     </option>
   </component>
   <component name="ProjectFrameBounds" extendedState="6">
-    <option name="x" value="308" />
-    <option name="y" value="-27" />
-    <option name="width" value="1551" />
-    <option name="height" value="839" />
+    <option name="x" value="-8" />
+    <option name="y" value="-8" />
+    <option name="width" value="1936" />
+    <option name="height" value="1056" />
   </component>
   <component name="ProjectLevelVcsManager" settingsEditedManually="true" />
   <component name="ProjectView">
@@ -89,6 +88,11 @@
               <item name="Zasieg" type="b2602c69:ProjectViewProjectNode" />
               <item name="Zasieg" type="462c0819:PsiDirectoryNode" />
             </path>
+            <path>
+              <item name="Zasieg" type="b2602c69:ProjectViewProjectNode" />
+              <item name="Zasieg" type="462c0819:PsiDirectoryNode" />
+              <item name="sssss" type="462c0819:PsiDirectoryNode" />
+            </path>
           </expand>
           <select />
         </subPane>
@@ -97,8 +101,8 @@
     </panes>
   </component>
   <component name="PropertiesComponent">
-    <property name="last_opened_file_path" value="$PROJECT_DIR$/main.py" />
-    <property name="settings.editor.selected.configurable" value="preferences.sourceCode.Python" />
+    <property name="last_opened_file_path" value="$PROJECT_DIR$" />
+    <property name="settings.editor.selected.configurable" value="preferences.externalDependencies" />
   </component>
   <component name="RunDashboard">
     <option name="ruleStates">
@@ -223,7 +227,14 @@
       <option name="project" value="LOCAL" />
       <updated>1605455618075</updated>
     </task>
-    <option name="localTasksCounter" value="9" />
+    <task id="LOCAL-00009" summary="juz oficialnie koniec">
+      <created>1606074481568</created>
+      <option name="number" value="00009" />
+      <option name="presentableId" value="LOCAL-00009" />
+      <option name="project" value="LOCAL" />
+      <updated>1606074481568</updated>
+    </task>
+    <option name="localTasksCounter" value="10" />
     <servers />
   </component>
   <component name="TodoView">
@@ -237,20 +248,19 @@
   </component>
   <component name="ToolWindowManager">
     <frame x="-8" y="-8" width="1936" height="1056" extended-state="6" />
-    <editor active="true" />
     <layout>
-      <window_info content_ui="combo" id="Project" order="0" visible="true" weight="0.015806112" />
+      <window_info active="true" content_ui="combo" id="Project" order="0" visible="true" weight="0.10748156" />
       <window_info id="Structure" order="1" side_tool="true" weight="0.25" />
       <window_info id="Favorites" order="2" side_tool="true" />
       <window_info anchor="bottom" id="Message" order="0" />
       <window_info anchor="bottom" id="Find" order="1" weight="0.3286119" />
-      <window_info anchor="bottom" id="Run" order="2" weight="0.063921995" />
+      <window_info anchor="bottom" id="Run" order="2" weight="0.18387553" />
       <window_info anchor="bottom" id="Debug" order="3" weight="0.39943343" />
       <window_info anchor="bottom" id="Cvs" order="4" weight="0.25" />
       <window_info anchor="bottom" id="Inspection" order="5" weight="0.4" />
       <window_info anchor="bottom" id="TODO" order="6" weight="0.32936078" />
       <window_info anchor="bottom" id="Version Control" order="7" weight="0.32936078" />
-      <window_info anchor="bottom" id="Terminal" order="8" weight="0.2990249" />
+      <window_info anchor="bottom" id="Terminal" order="8" weight="0.23903818" />
       <window_info anchor="bottom" id="Event Log" order="9" side_tool="true" />
       <window_info anchor="bottom" id="Python Console" order="10" weight="0.10400867" />
       <window_info anchor="right" id="Commander" internal_type="SLIDING" order="0" type="SLIDING" weight="0.4" />
@@ -266,7 +276,8 @@
     <MESSAGE value="wszystko dziala dla wszystkieg" />
     <MESSAGE value="zapisywanie do excela dodane" />
     <MESSAGE value="cala apka" />
-    <option name="LAST_COMMIT_MESSAGE" value="cala apka" />
+    <MESSAGE value="juz oficialnie koniec" />
+    <option name="LAST_COMMIT_MESSAGE" value="juz oficialnie koniec" />
   </component>
   <component name="editorHistoryManager">
     <entry file="file://$USER_HOME$/.PyCharmCE2018.3/system/python_stubs/-1378484477/PyQt5/QtWidgets/QWidget.py">
@@ -283,10 +294,24 @@
         </state>
       </provider>
     </entry>
+    <entry file="file://$PROJECT_DIR$/main.spec">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="582">
+          <caret line="32" selection-start-line="32" selection-end-line="32" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/../untitled/venv/Scripts/pyinstaller-script.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="482">
+          <caret line="32" selection-start-line="32" selection-end-line="32" />
+        </state>
+      </provider>
+    </entry>
     <entry file="file://$PROJECT_DIR$/main.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="-2870">
-          <caret line="457" column="61" selection-start-line="457" selection-start-column="61" selection-end-line="457" selection-end-column="61" />
+        <state relative-caret-position="-6860">
+          <caret line="53" selection-start-line="53" selection-end-line="53" />
           <folding>
             <element signature="e#0#39#0" expanded="true" />
           </folding>
@@ -295,11 +320,8 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/Parametry.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="500">
-          <caret line="31" column="41" selection-start-line="31" selection-start-column="41" selection-end-line="31" selection-end-column="41" />
-          <folding>
-            <element signature="e#0#49#0" expanded="true" />
-          </folding>
+        <state relative-caret-position="100">
+          <caret line="8" selection-start-line="8" selection-end-line="8" />
         </state>
       </provider>
     </entry>

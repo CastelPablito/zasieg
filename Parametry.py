@@ -1,16 +1,11 @@
-from PyQt5.QtWidgets import QApplication, QWidget
-from PyQt5.QtGui import QIcon
-from PyQt5.QtWidgets import QLabel, QGridLayout, QSlider, QComboBox
-from PyQt5.QtWidgets import QLineEdit, QPushButton, QHBoxLayout, QVBoxLayout, QSpacerItem, QSizePolicy
-from PyQt5.QtWidgets import QMessageBox
+from PyQt5.QtWidgets import QLabel, QSlider, QComboBox
+from PyQt5.QtWidgets import QLineEdit, QHBoxLayout, QVBoxLayout
 from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QPainter, QColor, QFont, QIntValidator
+from PyQt5.QtGui import QIntValidator
 
-
-# from main import main_window
 
 class Parametr(QVBoxLayout):
-    # container = QLineEdit()
+
     def __init__(self, info, minimum, maksimum, defaultValue, parent=None):
         super().__init__(parent)
         Hlayout = QHBoxLayout()
@@ -30,7 +25,6 @@ class Parametr(QVBoxLayout):
         self.container.setValidator(myValidator)
         self.slider.setRange(minimum, maksimum)
         self.slider.setValue(defaultValue)
-        # self.container.textChanged.connect(lambda x: self.slider.setValue(int(x)))     # działa ale w pewnym momencie wywala ;/
         self.slider.valueChanged.connect(lambda x: self.container.setText(str(x)))
         # self.container.textChanged.connect(lambda x: main_window.propagationModel())
 
